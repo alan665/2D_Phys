@@ -12,9 +12,11 @@ public:
 	std::vector<aabb::rect> vLevelRects;
 	aabb::rect vPlayer;
 
-	float gravity = 1800.0;
+	float gravity = 1800.0f;
 	float tmpGravity = gravity;
-	float moveSpeed = 105.0;
+	float maxVelocityX = 40.0f;
+	float maxVelocityY = 500.0f;
+	float moveSpeed = 105.0f;
 	float jumpHeight = 32 * 3.0f;
 
 	bool isClimbing = false;
@@ -23,7 +25,11 @@ public:
 	bool recentTouchedRightWall = false;
 	bool recentTouchedLeftWall = false;
 
-public:
+	void Print(const std::string p)
+	{
+		std::cout << p << std::endl;
+	}
+
 	bool OnUserCreate() override
 	{
 		//Player Collision Rect
@@ -43,6 +49,7 @@ public:
 		vLevelRects.push_back({ {0.0f, 160.0f}, {500.0f, 10.0f} });
 		vLevelRects.push_back({ {6.5f, 50.0f}, {5.0f, 300.0f} });
 		vLevelRects.push_back({ {300.0f, 50.0f}, {5.0f, 300.0f} });
+		vLevelRects.push_back({ {260.0f, 50.0f}, {5.0f, 300.0f} });
 
 		return true;
 	}
@@ -51,6 +58,27 @@ public:
 	{	
 		//Init
 		Clear(olc::DARK_CYAN);
+
+		// Clamp Player Velocity
+		if (vPlayer.vel.x > maxVelocityX)
+			vPlayer.vel.x = maxVelocityX;
+
+		if (vPlayer.vel.x < -maxVelocityX)
+			vPlayer.vel.x = -maxVelocityX;
+
+		if (vPlayer.vel.y > maxVelocityY)
+			vPlayer.vel.y = maxVelocityY;
+
+		if (vPlayer.vel.y < -maxVelocityY)
+			vPlayer.vel.y = -maxVelocityY;
+
+		//Player Global Friction
+		if (!isClimbing)
+		{
+			vPlayer.vel.x += -25.0f * vPlayer.vel.x * fElapsedTime;
+			if (fabs(vPlayer.vel.x) < 0.02f)
+				vPlayer.vel.x = 0.0f;
+		}
 
 		//Gravity
 		vPlayer.vel.y += tmpGravity * fElapsedTime;
@@ -66,11 +94,11 @@ public:
 			{
 				if (GetKey(olc::Key::A).bHeld)
 				{
-					vPlayer.vel.x = -moveSpeed;
+					vPlayer.vel.x += -moveSpeed;
 				}
 				if (GetKey(olc::Key::D).bHeld)
 				{
-					vPlayer.vel.x = +moveSpeed;
+					vPlayer.vel.x += +moveSpeed;
 				}
 				if (GetKey(olc::Key::SPACE).bPressed && vPlayer.contact[2])
 				{
@@ -80,20 +108,18 @@ public:
 				if (GetKey(olc::Key::SHIFT).bHeld && (recentTouchedLeftWall || recentTouchedRightWall))
 				{
 					isClimbing = true;
+					vPlayer.vel.x = 0;
+					vPlayer.vel.y = 0;
 				}
 			}
 		
 		//Keyboard Input IsClimbing
 			if (isClimbing)
 			{
-				vPlayer.vel.x = 0;
-				vPlayer.vel.y = 0;
-
 				if (GetKey(olc::Key::W).bHeld)
 				{
 					vPlayer.vel.y = -moveSpeed;
 				}
-
 				if (GetKey(olc::Key::W).bReleased)
 				{
 					vPlayer.vel.y = 0;
@@ -103,7 +129,6 @@ public:
 				{
 					vPlayer.vel.y = +moveSpeed;
 				}
-
 				if (GetKey(olc::Key::S).bReleased)
 				{
 					vPlayer.vel.y = 0;
@@ -111,28 +136,23 @@ public:
 
 				if (GetKey(olc::Key::SPACE).bPressed && GetKey(olc::Key::A).bHeld)
 				{
-					vPlayer.vel.y = -jumpHeight * 1;
-					vPlayer.vel.x = -moveSpeed * 6;
+					vPlayer.vel.y += -jumpHeight * 4;
+					vPlayer.vel.x += -jumpHeight * 8;
+					Print("WALL JUMPED");
 					isClimbing = false;
 				}
-
 				if (GetKey(olc::Key::SPACE).bPressed && GetKey(olc::Key::D).bHeld)
 				{
-					vPlayer.vel.y = -jumpHeight * 1;
-					vPlayer.vel.x = +moveSpeed * 6;
+					vPlayer.vel.y += -jumpHeight * 4;
+					vPlayer.vel.x += +jumpHeight * 8;
+					Print("WALL JUMPED");
 					isClimbing = false;
 				}
-
 				if (GetKey(olc::Key::SHIFT).bReleased)
 				{
 					isClimbing = false;
 				}
 			}
-
-		//Player Global Friction
-		vPlayer.vel.x += -25.0f * vPlayer.vel.x * fElapsedTime;
-			if (fabs(vPlayer.vel.x) < 0.02f)
-				vPlayer.vel.x = 0.0f;
 
 		//Draw Player Collision Rect
 		FillRect(vPlayer.pos, vPlayer.size, olc::WHITE);
