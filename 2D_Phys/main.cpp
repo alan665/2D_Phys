@@ -10,7 +10,7 @@ public:
 	}
 
 	std::vector<aabb::rect> vLevelRects;
-	aabb::rect vPlayer;
+	std::vector<aabb::rect> vPlayer;
 
 	float gravity = 1800.0f;
 	float tmpGravity = gravity;
@@ -33,10 +33,11 @@ public:
 	bool OnUserCreate() override
 	{
 		//Player Collision Rect
-		vPlayer = { {100.0f, 10.0f}, {5.0f, 5.0f} };
+		vPlayer.push_back({ {100.0f, 10.0f}, {5.0f, 5.0f} }); //Player
+		vPlayer.push_back({ {100.0f, 10.0f}, {5.0f, 5.0f} }); //PlayerLeftBoxDetector
 		
 		//Level rects
-		vLevelRects.push_back({ {100.0f, 50.0f}, {20.0f, 20.0f} });
+		vLevelRects.push_back({ {100.0f, 40.0f}, {20.0f, 20.0f} }); //[0]
 		vLevelRects.push_back({ {100.0f, 150.0f}, {75.0f, 20.0f} });
 		vLevelRects.push_back({ {140.0f, 50.0f}, {20.0f, 20.0f} });
 		vLevelRects.push_back({ {190.0f, 50.0f}, {20.0f, 20.0f} });
@@ -59,29 +60,33 @@ public:
 		//Init
 		Clear(olc::DARK_CYAN);
 
+		//Player Phys Boxes Follow Player
+		vPlayer[1].pos.x = vPlayer[0].pos.x + -6.5f;
+		vPlayer[1].pos.y = vPlayer[0].pos.y;
+
 		// Clamp Player Velocity
-		if (vPlayer.vel.x > maxVelocityX)
-			vPlayer.vel.x = maxVelocityX;
+		if (vPlayer[0].vel.x > maxVelocityX)
+			vPlayer[0].vel.x = maxVelocityX;
 
-		if (vPlayer.vel.x < -maxVelocityX)
-			vPlayer.vel.x = -maxVelocityX;
+		if (vPlayer[0].vel.x < -maxVelocityX)
+			vPlayer[0].vel.x = -maxVelocityX;
 
-		if (vPlayer.vel.y > maxVelocityY)
-			vPlayer.vel.y = maxVelocityY;
+		if (vPlayer[0].vel.y > maxVelocityY)
+			vPlayer[0].vel.y = maxVelocityY;
 
-		if (vPlayer.vel.y < -maxVelocityY)
-			vPlayer.vel.y = -maxVelocityY;
+		if (vPlayer[0].vel.y < -maxVelocityY)
+			vPlayer[0].vel.y = -maxVelocityY;
 
 		//Player Global Friction
 		if (!isClimbing)
 		{
-			vPlayer.vel.x += -25.0f * vPlayer.vel.x * fElapsedTime;
-			if (fabs(vPlayer.vel.x) < 0.02f)
-				vPlayer.vel.x = 0.0f;
+			vPlayer[0].vel.x += -25.0f * vPlayer[0].vel.x * fElapsedTime;
+			if (fabs(vPlayer[0].vel.x) < 0.02f)
+				vPlayer[0].vel.x = 0.0f;
 		}
 
 		//Gravity
-		vPlayer.vel.y += tmpGravity * fElapsedTime;
+		vPlayer[0].vel.y += tmpGravity * fElapsedTime;
 
 		//Disable gravity if climbing
 		if (isClimbing)
@@ -94,22 +99,22 @@ public:
 			{
 				if (GetKey(olc::Key::A).bHeld)
 				{
-					vPlayer.vel.x += -moveSpeed;
+					vPlayer[0].vel.x += -moveSpeed;
 				}
 				if (GetKey(olc::Key::D).bHeld)
 				{
-					vPlayer.vel.x += +moveSpeed;
+					vPlayer[0].vel.x += +moveSpeed;
 				}
-				if (GetKey(olc::Key::SPACE).bPressed && vPlayer.contact[2])
+				if (GetKey(olc::Key::SPACE).bPressed && vPlayer[0].contact[2])
 				{
-					vPlayer.contact[2] = nullptr;
-					vPlayer.vel.y = sqrt(jumpHeight * tmpGravity) * -1;
+					vPlayer[0].contact[2] = nullptr;
+					vPlayer[0].vel.y = sqrt(jumpHeight * tmpGravity) * -1;
 				}
 				if (GetKey(olc::Key::SHIFT).bHeld && (recentTouchedLeftWall || recentTouchedRightWall))
 				{
 					isClimbing = true;
-					vPlayer.vel.x = 0;
-					vPlayer.vel.y = 0;
+					vPlayer[0].vel.x = 0;
+					vPlayer[0].vel.y = 0;
 				}
 			}
 		
@@ -118,34 +123,32 @@ public:
 			{
 				if (GetKey(olc::Key::W).bHeld)
 				{
-					vPlayer.vel.y = -moveSpeed;
+					vPlayer[0].vel.y = -moveSpeed;
 				}
 				if (GetKey(olc::Key::W).bReleased)
 				{
-					vPlayer.vel.y = 0;
+					vPlayer[0].vel.y = 0;
 				}
 
 				if (GetKey(olc::Key::S).bHeld)
 				{
-					vPlayer.vel.y = +moveSpeed;
+					vPlayer[0].vel.y = +moveSpeed;
 				}
 				if (GetKey(olc::Key::S).bReleased)
 				{
-					vPlayer.vel.y = 0;
+					vPlayer[0].vel.y = 0;
 				}
 
 				if (GetKey(olc::Key::SPACE).bPressed && GetKey(olc::Key::A).bHeld)
 				{
-					vPlayer.vel.y += -jumpHeight * 4;
-					vPlayer.vel.x += -jumpHeight * 8;
-					Print("WALL JUMPED");
+					vPlayer[0].vel.y += -jumpHeight * 4;
+					vPlayer[0].vel.x += -jumpHeight * 8;
 					isClimbing = false;
 				}
 				if (GetKey(olc::Key::SPACE).bPressed && GetKey(olc::Key::D).bHeld)
 				{
-					vPlayer.vel.y += -jumpHeight * 4;
-					vPlayer.vel.x += +jumpHeight * 8;
-					Print("WALL JUMPED");
+					vPlayer[0].vel.y += -jumpHeight * 4;
+					vPlayer[0].vel.x += +jumpHeight * 8;
 					isClimbing = false;
 				}
 				if (GetKey(olc::Key::SHIFT).bReleased)
@@ -154,63 +157,103 @@ public:
 				}
 			}
 
-		//Draw Player Collision Rect
-		FillRect(vPlayer.pos, vPlayer.size, olc::WHITE);
-		DrawRect(vPlayer.pos, vPlayer.size, olc::GREY);
+		//Draw Player
+		FillRect(vPlayer[0].pos, vPlayer[0].size, olc::WHITE);
+
+		//Draw Player Left Wall Collision Rect
+		DrawRect(vPlayer[1].pos, vPlayer[1].size, olc::GREY);
 		
 		//Draw Level Rectangles
 		for (const auto& r : vLevelRects)
 			DrawRect(r.pos, r.size, olc::WHITE);
 
+
+
+		// === Player Rect Collisions == //
+
+
 		//Sort collisions in order of distance
-		olc::vf2d cp, cn;
-		float t = 0, min_t = INFINITY;
-		std::vector<std::pair<int, float>> z;
-	
+		olc::vf2d playerContactPoint, playerContactNormal;
+		olc::vf2d leftContactPoint, leftContactNormal;
+		float playerTime = 0, pmin_t = INFINITY;
+		float leftTime = 0, tmin_t = INFINITY;
+		std::vector<std::pair<int, float>> playerSort;
+		std::vector<std::pair<int, float>> leftSort;
+
 		//Work out collision point, add it to vector along with rect ID
 		for (size_t i = 0; i < vLevelRects.size(); i++)
 		{
-			if (aabb::DynamicRectVsRect(&vPlayer, fElapsedTime, vLevelRects[i], cp, cn, t))
+			if (aabb::DynamicRectVsRect(&vPlayer[0], fElapsedTime, vLevelRects[i], playerContactPoint, playerContactNormal, playerTime))
 			{
-				z.push_back({ i, t });
+				playerSort.push_back({ i, playerTime });
 			}
 		}
 
-		//Do the sort
-		std::sort(z.begin(), z.end(), [](const std::pair<int, float>& a, const std::pair<int, float>& b)
+		for (size_t it = 0; it < vLevelRects.size(); it++)
+		{
+			if (aabb::DynamicRectVsRect(&vPlayer[1], fElapsedTime, vLevelRects[it], leftContactPoint, leftContactNormal, leftTime))
+			{
+				leftSort.push_back({ it, leftTime });
+			}
+		}
+
+		//Sort Player
+		std::sort(playerSort.begin(), playerSort.end(), [](const std::pair<int, float>& a, const std::pair<int, float>& b)
 		{
 			return a.second < b.second;
 		});
 
-		//Resolve the collision in order 
-		for (auto j : z)
-			aabb::ResolveDynamicRectVsRect(&vPlayer, fElapsedTime, &vLevelRects[j.first]);
+		//Sort Left
+		std::sort(leftSort.begin(), leftSort.end(), [](const std::pair<int, float>& a, const std::pair<int, float>& b)
+		{
+			return a.second < b.second;
+		});
+
+		//Resolve player collision
+		for (auto j : playerSort)
+			aabb::ResolveDynamicRectVsRect(&vPlayer[0], fElapsedTime, &vLevelRects[j.first]);
+
+		//Resolve left collision
+		for (auto j : leftSort)
+			aabb::ResolveDynamicRectVsRect(&vPlayer[1], fElapsedTime, &vLevelRects[j.first]);
+	
+
+
+
+
 
 		recentTouchedRightWall = false;
 		recentTouchedLeftWall = false;
 
+		//Attempt to find top of Rect player is climbing (Currently Left)
+		if (vPlayer[1].contact[3])
+		{
+			Print("Colliding with top of rect and Player Should stop moving");
+			vPlayer[1].contact[3] = nullptr;
+		}
+
 		//Draw rect dark red if wall on the right
-		if (vPlayer.contact[1])
+		if (vPlayer[0].contact[1])
 		{
 			recentTouchedRightWall = true;
-			DrawRect(vPlayer.contact[1]->pos, vPlayer.contact[1]->size, olc::DARK_RED);
-			vPlayer.contact[1] = nullptr;
+			DrawRect(vPlayer[0].contact[1]->pos, vPlayer[0].contact[1]->size, olc::DARK_RED);
+			vPlayer[0].contact[1] = nullptr;
 		}
 
 		//Draw rect dark yellow if wall on the left
-		if (vPlayer.contact[3])
+		if (vPlayer[0].contact[3])
 		{
 			recentTouchedLeftWall = true;
-			DrawRect(vPlayer.contact[3]->pos, vPlayer.contact[3]->size, olc::DARK_YELLOW);
-			vPlayer.contact[3] = nullptr;
+			DrawRect(vPlayer[0].contact[3]->pos, vPlayer[0].contact[3]->size, olc::DARK_YELLOW);
+			vPlayer[0].contact[3] = nullptr;
 		}
 
 		// Add velocity to player
-		vPlayer.pos += vPlayer.vel * fElapsedTime;
+		vPlayer[0].pos += vPlayer[0].vel * fElapsedTime;
 
 		//Draw players velocity vector (If this shown and the player is static then we have stored vel)
-		if (vPlayer.vel.mag2() > 0)
-			DrawLine(vPlayer.pos + vPlayer.size / 2, vPlayer.pos + vPlayer.size / 2 + vPlayer.vel.norm() * 10, olc::RED);
+		if (vPlayer[0].vel.mag2() > 0)
+			DrawLine(vPlayer[0].pos + vPlayer[0].size / 2, vPlayer[0].pos + vPlayer[0].size / 2 + vPlayer[0].vel.norm() * 10, olc::RED);
 
 		return true;
 	}
