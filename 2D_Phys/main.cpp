@@ -1,5 +1,7 @@
 #define OLC_PGE_APPLICATION
 #include "2DPhys.h"
+#include <iostream>
+#include <cmath>
 
 class Phys2D : public olc::PixelGameEngine
 {
@@ -24,6 +26,8 @@ public:
 
 	bool recentTouchedRightWall = false;
 	bool recentTouchedLeftWall = false;
+	bool leftWallPresent = false;
+	bool rightWallPresent = false;
 
 	void Print(const std::string p)
 	{
@@ -31,10 +35,12 @@ public:
 	}
 
 	bool OnUserCreate() override
-	{
+	{	
 		//Player Collision Rect
 		vPlayer.push_back({ {100.0f, 10.0f}, {5.0f, 5.0f} }); //Player
-		vPlayer.push_back({ {100.0f, 10.0f}, {5.0f, 5.0f} }); //PlayerLeftBoxDetector
+
+		vPlayer.push_back({ {80.0f, 5.0f}, {2.0f, 2.0f} }); //PlayerLeftBoxDetector
+		vPlayer.push_back({ {80.0f, 5.0f}, {2.0f, 2.0f} }); //PlayerLeftBoxDetector
 		
 		//Level rects
 		vLevelRects.push_back({ {100.0f, 40.0f}, {20.0f, 20.0f} }); //[0]
@@ -48,9 +54,8 @@ public:
 		vLevelRects.push_back({ {150.0f, 100.0f}, {10.0f, 1.0f} });
 		vLevelRects.push_back({ {200.0f, 100.0f}, {20.0f, 60.0f} });
 		vLevelRects.push_back({ {0.0f, 160.0f}, {500.0f, 10.0f} });
-		vLevelRects.push_back({ {6.5f, 50.0f}, {5.0f, 300.0f} });
+		vLevelRects.push_back({ {6.5f, 10.0f}, {5.0f, 600.0f} });
 		vLevelRects.push_back({ {300.0f, 50.0f}, {5.0f, 300.0f} });
-		vLevelRects.push_back({ {260.0f, 50.0f}, {5.0f, 300.0f} });
 
 		return true;
 	}
@@ -60,9 +65,13 @@ public:
 		//Init
 		Clear(olc::DARK_CYAN);
 
-		//Player Phys Boxes Follow Player
-		vPlayer[1].pos.x = vPlayer[0].pos.x + -6.5f;
+		//Player Left Phys Box Follow Player
+		vPlayer[1].pos.x = vPlayer[0].pos.x + -3.0f;
 		vPlayer[1].pos.y = vPlayer[0].pos.y;
+
+		//Player Right Phys Box Follow Player
+		vPlayer[2].pos.x = vPlayer[0].pos.x + 5.0f;
+		vPlayer[2].pos.y = vPlayer[0].pos.y;
 
 		// Clamp Player Velocity
 		if (vPlayer[0].vel.x > maxVelocityX)
@@ -85,14 +94,14 @@ public:
 				vPlayer[0].vel.x = 0.0f;
 		}
 
-		//Gravity
-		vPlayer[0].vel.y += tmpGravity * fElapsedTime;
-
 		//Disable gravity if climbing
 		if (isClimbing)
 			tmpGravity = 0;
-		if (!isClimbing)
+		else
 			tmpGravity = gravity;
+
+		//Gravity
+		vPlayer[0].vel.y += tmpGravity * fElapsedTime;
 
 		//Keyboard Input Walking
 			if (!isClimbing)
@@ -160,77 +169,59 @@ public:
 		//Draw Player
 		FillRect(vPlayer[0].pos, vPlayer[0].size, olc::WHITE);
 
-		//Draw Player Left Wall Collision Rect
+		//Draw Player Collision Rects
 		DrawRect(vPlayer[1].pos, vPlayer[1].size, olc::GREY);
+		DrawRect(vPlayer[2].pos, vPlayer[2].size, olc::GREY);
 		
 		//Draw Level Rectangles
 		for (const auto& r : vLevelRects)
+		{
 			DrawRect(r.pos, r.size, olc::WHITE);
-
-
-
-		// === Player Rect Collisions == //
-
+		}
 
 		//Sort collisions in order of distance
 		olc::vf2d playerContactPoint, playerContactNormal;
 		olc::vf2d leftContactPoint, leftContactNormal;
+		olc::vf2d direction = { float(GetMouseX()), float(GetMouseY()) };
 		float playerTime = 0, pmin_t = INFINITY;
-		float leftTime = 0, tmin_t = INFINITY;
+		float leftTime = 0, lmin_t = INFINITY;
 		std::vector<std::pair<int, float>> playerSort;
-		std::vector<std::pair<int, float>> leftSort;
 
 		//Work out collision point, add it to vector along with rect ID
 		for (size_t i = 0; i < vLevelRects.size(); i++)
 		{
+			//Detect Player
 			if (aabb::DynamicRectVsRect(&vPlayer[0], fElapsedTime, vLevelRects[i], playerContactPoint, playerContactNormal, playerTime))
 			{
 				playerSort.push_back({ i, playerTime });
 			}
-		}
 
-		for (size_t it = 0; it < vLevelRects.size(); it++)
-		{
-			if (aabb::DynamicRectVsRect(&vPlayer[1], fElapsedTime, vLevelRects[it], leftContactPoint, leftContactNormal, leftTime))
+			if (aabb::PointVsRect(vPlayer[1].pos, &vLevelRects[i]))
 			{
-				leftSort.push_back({ it, leftTime });
+				leftWallPresent = true;
+			}
+
+			if (aabb::PointVsRect(vPlayer[2].pos, &vLevelRects[i]))
+			{
+				rightWallPresent = true;
 			}
 		}
 
-		//Sort Player
+		//Sort Player Collisions
 		std::sort(playerSort.begin(), playerSort.end(), [](const std::pair<int, float>& a, const std::pair<int, float>& b)
 		{
 			return a.second < b.second;
 		});
 
-		//Sort Left
-		std::sort(leftSort.begin(), leftSort.end(), [](const std::pair<int, float>& a, const std::pair<int, float>& b)
-		{
-			return a.second < b.second;
-		});
-
 		//Resolve player collision
-		for (auto j : playerSort)
-			aabb::ResolveDynamicRectVsRect(&vPlayer[0], fElapsedTime, &vLevelRects[j.first]);
+		for (auto i : playerSort)
+		{
+			aabb::ResolveDynamicRectVsRect(&vPlayer[0], fElapsedTime, &vLevelRects[i.first]);
+		}
 
-		//Resolve left collision
-		for (auto j : leftSort)
-			aabb::ResolveDynamicRectVsRect(&vPlayer[1], fElapsedTime, &vLevelRects[j.first]);
-	
-
-
-
-
-
+		//Reset wall touched Status for this tick
 		recentTouchedRightWall = false;
 		recentTouchedLeftWall = false;
-
-		//Attempt to find top of Rect player is climbing (Currently Left)
-		if (vPlayer[1].contact[3])
-		{
-			Print("Colliding with top of rect and Player Should stop moving");
-			vPlayer[1].contact[3] = nullptr;
-		}
 
 		//Draw rect dark red if wall on the right
 		if (vPlayer[0].contact[1])
@@ -248,7 +239,7 @@ public:
 			vPlayer[0].contact[3] = nullptr;
 		}
 
-		// Add velocity to player
+		//Add velocity to player
 		vPlayer[0].pos += vPlayer[0].vel * fElapsedTime;
 
 		//Draw players velocity vector (If this shown and the player is static then we have stored vel)
