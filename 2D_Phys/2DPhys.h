@@ -79,8 +79,8 @@ namespace aabb
 		olc::vf2d& contact_point, olc::vf2d& contact_normal, float& contact_time)
 	{
 		// Check if dynamic rectangle is actually moving - we assume rectangles are NOT in collision to start
-		//if (r_dynamic->vel.x == 0 && r_dynamic->vel.y == 0)
-		//	return false;
+		if (r_dynamic->vel.x == 0 && r_dynamic->vel.y == 0)
+			return false;
 
 		// Expand target rectangle by source dimensions
 		aabb::rect expanded_target;

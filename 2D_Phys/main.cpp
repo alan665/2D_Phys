@@ -24,8 +24,13 @@ public:
 	bool isClimbing = false;
 	bool isInAir = false;
 
+	//Status stored until player stops climbing
 	bool recentTouchedRightWall = false;
 	bool recentTouchedLeftWall = false;
+
+	//Status stored per tick
+	bool tickTouchedRightWall = false;
+	bool tickTouchedLeftWall = false;
 	bool leftWallPresent = false;
 	bool rightWallPresent = false;
 
@@ -65,24 +70,40 @@ public:
 		//Init
 		Clear(olc::DARK_CYAN);
 
+		//Check if the player is at the top of the rect they are climbing, and move them to the top
+		if (!rightWallPresent && !leftWallPresent && isClimbing)
+		{
+			if (recentTouchedRightWall)
+			{
+				vPlayer[0].vel.x += +jumpHeight * 8;
+				isClimbing = false;
+				recentTouchedRightWall = false;
+				Print("Is at top of RIGHT Rect");
+			}
+			if (recentTouchedLeftWall)
+			{
+				vPlayer[0].vel.x += -jumpHeight * 8;
+				isClimbing = false;
+				recentTouchedLeftWall = false;
+				Print("Is at top of LEFT Rect");
+			}
+		}
+
 		//Player Left Phys Box Follow Player
 		vPlayer[1].pos.x = vPlayer[0].pos.x + -3.0f;
-		vPlayer[1].pos.y = vPlayer[0].pos.y;
+		vPlayer[1].pos.y = vPlayer[0].pos.y + 6.0f;
 
 		//Player Right Phys Box Follow Player
 		vPlayer[2].pos.x = vPlayer[0].pos.x + 5.0f;
-		vPlayer[2].pos.y = vPlayer[0].pos.y;
+		vPlayer[2].pos.y = vPlayer[0].pos.y - -6.0f;
 
 		// Clamp Player Velocity
 		if (vPlayer[0].vel.x > maxVelocityX)
 			vPlayer[0].vel.x = maxVelocityX;
-
 		if (vPlayer[0].vel.x < -maxVelocityX)
 			vPlayer[0].vel.x = -maxVelocityX;
-
 		if (vPlayer[0].vel.y > maxVelocityY)
 			vPlayer[0].vel.y = maxVelocityY;
-
 		if (vPlayer[0].vel.y < -maxVelocityY)
 			vPlayer[0].vel.y = -maxVelocityY;
 
@@ -100,7 +121,7 @@ public:
 		else
 			tmpGravity = gravity;
 
-		//Gravity
+		//Player Gravity
 		vPlayer[0].vel.y += tmpGravity * fElapsedTime;
 
 		//Keyboard Input Walking
@@ -119,7 +140,7 @@ public:
 					vPlayer[0].contact[2] = nullptr;
 					vPlayer[0].vel.y = sqrt(jumpHeight * tmpGravity) * -1;
 				}
-				if (GetKey(olc::Key::SHIFT).bHeld && (recentTouchedLeftWall || recentTouchedRightWall))
+				if (GetKey(olc::Key::SHIFT).bHeld && (tickTouchedLeftWall || tickTouchedRightWall))
 				{
 					isClimbing = true;
 					vPlayer[0].vel.x = 0;
@@ -163,6 +184,8 @@ public:
 				if (GetKey(olc::Key::SHIFT).bReleased)
 				{
 					isClimbing = false;
+					recentTouchedRightWall = false;
+					recentTouchedLeftWall = false;
 				}
 			}
 
@@ -186,6 +209,10 @@ public:
 		float playerTime = 0, pmin_t = INFINITY;
 		float leftTime = 0, lmin_t = INFINITY;
 		std::vector<std::pair<int, float>> playerSort;
+
+		//Reset wall status per tick
+		rightWallPresent = false;
+		leftWallPresent = false;
 
 		//Work out collision point, add it to vector along with rect ID
 		for (size_t i = 0; i < vLevelRects.size(); i++)
@@ -220,12 +247,13 @@ public:
 		}
 
 		//Reset wall touched Status for this tick
-		recentTouchedRightWall = false;
-		recentTouchedLeftWall = false;
+		tickTouchedRightWall = false;
+		tickTouchedLeftWall = false;
 
 		//Draw rect dark red if wall on the right
 		if (vPlayer[0].contact[1])
 		{
+			tickTouchedRightWall = true;
 			recentTouchedRightWall = true;
 			DrawRect(vPlayer[0].contact[1]->pos, vPlayer[0].contact[1]->size, olc::DARK_RED);
 			vPlayer[0].contact[1] = nullptr;
@@ -234,6 +262,7 @@ public:
 		//Draw rect dark yellow if wall on the left
 		if (vPlayer[0].contact[3])
 		{
+			tickTouchedLeftWall = true;
 			recentTouchedLeftWall = true;
 			DrawRect(vPlayer[0].contact[3]->pos, vPlayer[0].contact[3]->size, olc::DARK_YELLOW);
 			vPlayer[0].contact[3] = nullptr;
@@ -263,8 +292,8 @@ int main(){
 
 
 /*
-// All in contact rectangles in yellow
-for (int i = 0; i < 4; i++)
+//In contact rectangles in yellow
+for (int i = 0; i < 3; i++)
 {
 	if (vRects[0].contact[i])
 		DrawRect(vRects[0].contact[i]->pos, vRects[0].contact[i]->size, olc::YELLOW);
